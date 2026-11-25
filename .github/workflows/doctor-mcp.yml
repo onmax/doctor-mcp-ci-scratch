@@ -1,0 +1,84 @@
+name: doctor-mcp
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  remote:
+    name: remote / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mcp-url only (no MCP package)
+            args: --mcp-url https://nuxt.com/mcp --max-warnings 0
+          - name: mcp-url + strict (no MCP package)
+            args: --mcp-url https://nuxt.com/mcp --strict --max-warnings 0
+          - name: extends auto,mcp/recommended
+            args: --extends auto,mcp/recommended --mcp-url https://nuxt.com/mcp --max-warnings 0
+          - name: extends auto,mcp/strict
+            args: --extends auto,mcp/strict --mcp-url https://nuxt.com/mcp --max-warnings 0
+          - name: 401 server
+            args: --extends auto,mcp/recommended --mcp-url https://mcp.linear.app/mcp --max-warnings 0
+          - name: three servers strict
+            args: --extends auto,mcp/strict --mcp-url https://vitehub.dev/mcp --mcp-url https://ui.nuxt.com/mcp --mcp-url https://mcp.context7.com/mcp --max-warnings 0
+    defaults:
+      run:
+        working-directory: remote-only
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --no-frozen-lockfile
+      - name: vite-doctor ${{ matrix.args }}
+        run: |
+          set +e
+          pnpm exec vite-doctor . ${{ matrix.args }}
+          code=$?
+          echo "| \`vite-doctor . ${{ matrix.args }}\` | exit $code |" >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+
+  vitehub-dev:
+    name: vitehub dev / ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: recommended
+            args: ""
+          - name: recommended --max-warnings 0
+            args: --max-warnings 0
+          - name: strict --max-warnings 0
+            args: --strict --max-warnings 0
+    defaults:
+      run:
+        working-directory: vh-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --no-frozen-lockfile
+      - name: start the dev server
+        run: |
+          nohup pnpm exec vite > dev.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf -o /dev/null http://localhost:4417/ && break; sleep 1; done
+      - name: vite-doctor --mcp-url http://localhost:4417/mcp ${{ matrix.args }}
+        run: |
+          set +e
+          pnpm exec vite-doctor . --mcp-url http://localhost:4417/mcp ${{ matrix.args }}
+          code=$?
+          echo "| \`vite-doctor . --mcp-url http://localhost:4417/mcp ${{ matrix.args }}\` | exit $code |" >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+      - name: dev server log (plugin run)
+        if: always()
+        run: cat dev.log

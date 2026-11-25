@@ -1,0 +1,1 @@
+Scratch repo: runs Vite Doctor's MCP checks (MCP0005–MCP0009) the way a CI job would, against live MCP servers and against a ViteHub app's dev server. Vite Doctor comes from the pkg.pr.new build of onmax/vite-doctor main (79b1eca), since no npm release has these rules yet.

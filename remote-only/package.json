@@ -1,0 +1,2 @@
+{ "name": "remote-only", "private": true, "type": "module",
+  "devDependencies": { "vite-doctor": "https://pkg.pr.new/vite-doctor@79b1eca" } }
